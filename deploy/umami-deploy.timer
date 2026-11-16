@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the Umami GitHub fork every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=1min
+AccuracySec=5s
+Unit=umami-deploy.service
+
+[Install]
+WantedBy=timers.target
