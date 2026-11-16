@@ -1,10 +1,10 @@
 [Unit]
-Description=Check the Umami GitHub fork every minute
+Description=Check the Umami GitHub fork daily
 
 [Timer]
-OnBootSec=2min
-OnUnitInactiveSec=1min
-AccuracySec=5s
+OnCalendar=*-*-* 04:00:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1min
 Unit=umami-deploy.service
 
 [Install]

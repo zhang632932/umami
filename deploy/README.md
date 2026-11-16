@@ -1,6 +1,6 @@
 # Umami GitHub 自动部署
 
-服务器每分钟检查公开仓库 `zhang632932/umami` 的 `master`。新提交先在 `/www/wwwroot/umami/source` 构建 `umami-local:<完整 commit>`；构建成功后才暂停生产应用、备份数据库，在独立候选容器中完成迁移和验证，最后切换生产应用。候选容器仅绑定随机的本机回环端口，公网无法向它发送统计事件。Docker 镜像内自带 Node，无需升级宿主机 Node。
+服务器每天北京时间 04:00 检查公开仓库 `zhang632932/umami` 的 `master`（调度精度 1 分钟）。停机或停用期间错过的检查，会在定时器恢复后补执行一次。新提交先在 `/www/wwwroot/umami/source` 构建 `umami-local:<完整 commit>`；构建成功后才暂停生产应用、备份数据库，在独立候选容器中完成迁移和验证，最后切换生产应用。候选容器仅绑定随机的本机回环端口，公网无法向它发送统计事件。Docker 镜像内自带 Node，无需升级宿主机 Node。
 
 仅允许版本号为稳定的 `3.x.y`；v4、预发布版本、Git 分支分叉和本地源码改动都会阻止部署。部署只 recreate `umami` 服务，不更新 PostgreSQL 12.22 或删除数据库卷。镜像启动会自动应用 Prisma migrations。
 
@@ -17,7 +17,7 @@ systemctl status umami-deploy.service
 systemctl enable --now umami-deploy.timer
 ```
 
-Python 使用标准库，依赖宿主机 Git、Docker Compose v2 和容器内 PostgreSQL 工具。Git origin 必须是上述公开 HTTPS 地址，服务器不需要 GitHub 私钥。推送后通常一分钟内开始构建；构建时间另计。
+Python 使用标准库，依赖宿主机 Git、Docker Compose v2 和容器内 PostgreSQL 工具。Git origin 必须是上述公开 HTTPS 地址，服务器不需要 GitHub 私钥。推送后在下一次每日检查时开始构建；构建时间另计。需要立即检查时可手动执行 `systemctl start umami-deploy.service`。
 
 本机验证部署状态机：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s deploy -p 'test_*.py' -v`。测试模拟数据库/容器，并使用真实子进程检查日志保存，不连接生产服务器。
 
@@ -38,7 +38,7 @@ systemctl stop umami-deploy.timer
 
 构建详细输出写入 `deploy-state/build-<commit>.log`，其他失败命令输出写入 `deploy-state/last-command.log`，权限 600；日志可能含工具输出的配置细节，不要公开或提交进 Git。systemd journal 仅记录操作结果及诊断文件路径。
 
-构建和部署由同一文件锁互斥。失败提交会被记录，之后每分钟不会反复构建/迁移；推送新提交或执行 `--retry` 才重试。事务 marker 保存在 `deploy-state/transaction.json`；异常中断后下一次运行优先恢复，不会直接开始另一次部署。
+构建和部署由同一文件锁互斥。失败提交会被记录，后续每日检查不会反复构建/迁移；推送新提交或执行 `--retry` 才重试。事务 marker 保存在 `deploy-state/transaction.json`；异常中断后下一次运行优先恢复，不会直接开始另一次部署。
 
 ## 备份、验证和回滚
 
